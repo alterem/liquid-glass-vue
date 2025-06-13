@@ -3,9 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import dts from 'vite-plugin-dts'
 
-export default defineConfig(({ command }) => {
+export default defineConfig(({ command, mode }) => {
   if (command === 'serve') {
-    // 开发模式 - 演示项目
     return {
       plugins: [vue()],
       resolve: {
@@ -15,40 +14,59 @@ export default defineConfig(({ command }) => {
       },
       server: {
         fs: {
-          allow: ['.'] // 允许访问当前目录
+          allow: ['.']
         }
       }
     }
   } else {
-    // 构建模式 - 组件库
-    return {
-      plugins: [
-        vue(),
-        dts({
-          insertTypesEntry: true,
-          copyDtsFiles: true,
-          include: ['lib/**/*']
-        })
-      ],
-      resolve: {
-        alias: {
-          '@': resolve(__dirname, 'lib')
-        }
-      },
-      build: {
-        lib: {
-          entry: resolve(__dirname, 'lib/index.ts'),
-          name: 'VueLiquidGlass',
-          fileName: (format) => `vue-liquid-glass.${format}.js`,
-          formats: ['es', 'umd']
+    if (mode === 'gh-pages') {
+      return {
+        base: '/liquid-glass-vue/',
+        plugins: [vue()],
+        resolve: {
+          alias: {
+            '@': resolve(__dirname, 'lib')
+          }
         },
-        rollupOptions: {
-          external: ['vue'],
-          output: {
-            globals: {
-              vue: 'Vue'
-            },
-            exports: 'named'
+        build: {
+          outDir: 'dist-demo',
+          rollupOptions: {
+            input: {
+              main: resolve(__dirname, 'index.html')
+            }
+          }
+        }
+      }
+    } else {
+      return {
+        plugins: [
+          vue(),
+          dts({
+            insertTypesEntry: true,
+            copyDtsFiles: true,
+            include: ['lib/**/*']
+          })
+        ],
+        resolve: {
+          alias: {
+            '@': resolve(__dirname, 'lib')
+          }
+        },
+        build: {
+          lib: {
+            entry: resolve(__dirname, 'lib/index.ts'),
+            name: 'VueLiquidGlass',
+            fileName: (format) => `vue-liquid-glass.${format}.js`,
+            formats: ['es', 'umd']
+          },
+          rollupOptions: {
+            external: ['vue'],
+            output: {
+              globals: {
+                vue: 'Vue'
+              },
+              exports: 'named'
+            }
           }
         }
       }

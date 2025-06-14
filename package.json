@@ -1,6 +1,6 @@
 {
   "name": "@alterem/liquid-glass-vue",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A Vue 3 liquid glass effect component library",
   "type": "module",
   "main": "./dist/vue-liquid-glass.umd.cjs",

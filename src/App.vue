@@ -22,24 +22,24 @@
       <div class="demo-section">
         <h2>可拖动的液态玻璃卡片</h2>
         <div class="draggable-area">
-          <LiquidGlass variant="primary" custom-class="draggable-card" @mousedown="startDrag($event, 'card1')"
-            :style="cardPositions.card1">
+          <LiquidGlass variant="primary" custom-class="draggable-card" @mousedown.prevent="startDrag($event, 'card1')"
+            @touchstart.prevent="startDrag($event, 'card1')" :style="cardPositions.card1">
             <div class="card-content">
               <h4>🎯 拖动我</h4>
               <p>Primary 变体</p>
             </div>
           </LiquidGlass>
 
-          <LiquidGlass variant="secondary" custom-class="draggable-card" @mousedown="startDrag($event, 'card2')"
-            :style="cardPositions.card2">
+          <LiquidGlass variant="secondary" custom-class="draggable-card" @mousedown.prevent="startDrag($event, 'card2')"
+            @touchstart.prevent="startDrag($event, 'card2')" :style="cardPositions.card2">
             <div class="card-content">
               <h4>🚀 我也能拖动</h4>
               <p>Secondary 变体</p>
             </div>
           </LiquidGlass>
 
-          <LiquidGlass variant="dark" custom-class="draggable-card" @mousedown="startDrag($event, 'card3')"
-            :style="cardPositions.card3">
+          <LiquidGlass variant="dark" custom-class="draggable-card" @mousedown.prevent="startDrag($event, 'card3')"
+            @touchstart.prevent="startDrag($event, 'card3')" :style="cardPositions.card3">
             <div class="card-content">
               <h4>🌙 拖拽试试</h4>
               <p>Dark 变体</p>
@@ -168,6 +168,8 @@
         </div>
       </Transition>
 
+      <!-- LiquidGlassModal 组件 -->
+      <LiquidGlassModal v-model="showModal" :title="modalTitle" :message="modalMessage" />
 
       <div class="demo-container">
         <!-- 背景图片或渐变 -->
@@ -196,6 +198,24 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import LiquidGlass from '../lib/components/LiquidGlass.vue'
 import UserCard from '../lib/components/UserCard.vue'
+import LiquidGlassModal from '../lib/components/LiquidGlassModal.vue'
+import type { LiquidGlassProps } from '../lib/types'
+
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+// 模态框状态
+const showModal = ref(false)
+const modalTitle = ref('')
+const modalMessage = ref('')
+
+const openModal = (title: string, message: string) => {
+  modalTitle.value = title
+  modalMessage.value = message
+  showModal.value = true
+}
 
 // 表单数据
 const formData = reactive({
@@ -208,7 +228,7 @@ const formData = reactive({
 const cardPositions = reactive({
   card1: { transform: 'translate(0px, 0px)' },
   card2: { transform: 'translate(150px, 0px)' },
-  card3: { transform: 'translate(300px, 0px)' }
+  card3: { transform: 'translate(320px, 0px)' }
 })
 
 const dragState = reactive({
@@ -233,8 +253,16 @@ const fabMenuItems = [
   { icon: '⚡', action: 'quick' }
 ]
 
+interface CardItem {
+  icon: string
+  title: string
+  description: string
+  stats: string
+  variant: LiquidGlassProps['variant']
+}
+
 // 卡片数据
-const cardData = [
+const cardData: CardItem[] = [
   {
     icon: '📊',
     title: '数据分析',
@@ -267,7 +295,7 @@ const cardData = [
 
 // 事件处理
 const handleClick = () => {
-  alert('液态玻璃组件被点击了！')
+  openModal('点击事件', '液态玻璃组件被点击了！')
 }
 
 const handleToolClick = (tool: string) => {
@@ -276,7 +304,7 @@ const handleToolClick = (tool: string) => {
 
 const handleSubmit = () => {
   console.log('表单提交:', formData)
-  alert('表单提交成功！')
+  openModal('表单提交', '表单提交成功！')
 }
 
 const resetForm = () => {
@@ -309,13 +337,22 @@ const handleFabAction = (action: string) => {
 }
 
 // 拖拽功能
-const startDrag = (event: MouseEvent, cardId: string) => {
+const startDrag = (event: MouseEvent | TouchEvent, cardId: string) => {
+  // if (isMobile.value) return
+
   dragState.isDragging = true
   dragState.currentCard = cardId
-  dragState.startX = event.clientX
-  dragState.startY = event.clientY
 
-  // 获取当前位置
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
+  dragState.startX = clientX
+  dragState.startY = clientY
+
+  if ('touches' in event) {
+    event.preventDefault()
+  }
+
   const currentTransform = cardPositions[cardId as keyof typeof cardPositions].transform
   const matches = currentTransform.match(/translate\((-?\d+)px, (-?\d+)px\)/)
   if (matches) {
@@ -325,19 +362,28 @@ const startDrag = (event: MouseEvent, cardId: string) => {
 
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
+  document.addEventListener('touchmove', onDrag, { passive: false })
+  document.addEventListener('touchend', stopDrag)
 }
 
-const onDrag = (event: MouseEvent) => {
-  if (!dragState.isDragging) return
+const onDrag = (event: MouseEvent | TouchEvent) => {
+  // if (!dragState.isDragging || isMobile.value) return
 
-  const deltaX = event.clientX - dragState.startX
-  const deltaY = event.clientY - dragState.startY
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
+  const deltaX = clientX - dragState.startX
+  const deltaY = clientY - dragState.startY
 
   const newX = dragState.initialX + deltaX
   const newY = dragState.initialY + deltaY
 
   cardPositions[dragState.currentCard as keyof typeof cardPositions].transform =
     `translate(${newX}px, ${newY}px)`
+
+  if ('preventDefault' in event) {
+    event.preventDefault()
+  }
 }
 
 const stopDrag = () => {
@@ -345,11 +391,26 @@ const stopDrag = () => {
   dragState.currentCard = ''
   document.removeEventListener('mousemove', onDrag)
   document.removeEventListener('mouseup', stopDrag)
+  document.removeEventListener('touchmove', onDrag)
+  document.removeEventListener('touchend', stopDrag)
 }
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  if (isMobile.value) {
+    cardPositions.card1.transform = 'translate(0px, 0px)'
+    cardPositions.card2.transform = 'translate(0px, 0px)'
+    cardPositions.card3.transform = 'translate(0px, 0px)'
+  }
+})
 
 onUnmounted(() => {
   document.removeEventListener('mousemove', onDrag)
   document.removeEventListener('mouseup', stopDrag)
+  document.removeEventListener('touchmove', onDrag)
+  document.removeEventListener('touchend', stopDrag)
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -462,6 +523,8 @@ onUnmounted(() => {
   cursor: move;
   user-select: none;
   transition: transform 0.2s ease;
+  touch-action: none;
+  /* 阻止浏览器默认的触摸行为 */
 }
 
 .draggable-card:hover {
@@ -712,7 +775,18 @@ onUnmounted(() => {
   }
 
   .draggable-area {
-    height: 300px;
+    height: auto;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .draggable-card {
+    position: static;
+    width: 90%;
+    max-width: 300px;
   }
 
   .effects-grid {
